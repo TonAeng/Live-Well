@@ -1,0 +1,91 @@
+import tensorflow as tf
+#import numpy as np
+#from numpy.random import seed
+#seed(1)
+from tensorflow.random import set_seed
+set_seed(2)
+from tensorflow import keras
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import pandas as pd
+import time
+import PIL
+import glob
+import random
+# from sklearn.model_selection import train_test_split
+import os
+import skimage
+import cv2
+import shutil
+import numpy as np 
+from flask import Flask, request, jsonify
+from PIL import Image
+import io
+
+
+model = tf.keras.models.load_model('classify_model.h5')
+model.load_weights('classify_model.h5')
+# best_model.evaluate(test_gen)
+
+key_list = list()
+with open('labels.txt', encoding='utf-8') as fp:
+    lines = fp.read()
+
+for i, line in enumerate(lines.split('\n')):
+    key_list.append(line.strip())
+
+print (key_list)
+# key_list = list(labels_dict.keys())
+# val_list = list(labels_dict.values())
+
+def predict_image(img):
+    print (img)
+    img=skimage.io.imread(img)
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    resized_img = cv2.resize(img, (224, 224))
+    img_tensor = tf.convert_to_tensor(resized_img, dtype=tf.float32)
+    img_tensor = tf.expand_dims(img_tensor, 0)
+    prediction = model.predict(img_tensor, use_multiprocessing=True)
+    print(prediction)
+    # prediction = prediction.argmax()
+
+    
+    # print (key_list[prediction])
+    # return key_list[prediction]
+   
+    sorted_indices = np.argsort(prediction[0])
+    top_indices = sorted_indices[-3:]
+    top_predictions = list()
+
+    for i in top_indices:
+        top_predictions.append(key_list[i])
+    print(top_predictions)
+    return top_predictions
+
+import io
+import base64
+from PIL import Image
+from flask import Flask, request
+
+app1 = Flask(__name__)
+
+@app1.route('/', methods=['POST'])
+def index():
+    # Get the image file from the POST request
+    img_file = request.files.get('image')
+    
+    # Convert the image file to a PIL image
+    img = io.BytesIO(img_file.read())
+
+    # Process the image and generate a string
+    # processed_string = process_image_to_string(img)
+    # Encode the string in base64
+    # encoded_string = base64.b64encode(processed_string.encode()).decode()
+    
+    # Return the encoded string as the response
+    # return {'result': encoded_string}
+
+    return jsonify({
+        'result':  predict_image(img)
+    })
